@@ -860,6 +860,11 @@ document.addEventListener('keydown', (e) => {
 
 /**
  * 只允許 ArrowUp / ArrowDown 調整數值，禁止鍵盤輸入
+ * 
+ * 規則：
+ * - x 的 ArrowUp：即時檢查 x 是否等於 y，若 x=y 則不增加
+ * - y 的 ArrowDown：即時檢查 y 是否等於 x，若 x=y 則不減少
+ * - x 範圍 2~9，y 範圍 2~9
  */
 function arrowOnlyInput(inputEl, otherEl, isX) {
     return function(e) {
@@ -867,14 +872,14 @@ function arrowOnlyInput(inputEl, otherEl, isX) {
         if (e.key === 'ArrowUp') {
             e.preventDefault();
             let val = parseInt(inputEl.value) || 2;
+            const otherVal = parseInt(otherEl.value) || 2;
             if (isX) {
-                // x 不能超過 y，也不能超過 9
-                const yVal = parseInt(otherEl.value) || 9;
-                if (val < yVal && val < 9) {
+                // x 的 ArrowUp：x 不能等於 y，也不能超過 9
+                if (val < 9 && val < otherVal) {
                     inputEl.value = val + 1;
                 }
             } else {
-                // y 不能超過 9
+                // y 的 ArrowUp：y 不能超過 9
                 if (val < 9) {
                     inputEl.value = val + 1;
                 }
@@ -882,15 +887,15 @@ function arrowOnlyInput(inputEl, otherEl, isX) {
         } else if (e.key === 'ArrowDown') {
             e.preventDefault();
             let val = parseInt(inputEl.value) || 2;
+            const otherVal = parseInt(otherEl.value) || 2;
             if (isX) {
-                // x 不能小於 2
+                // x 的 ArrowDown：x 不能小於 2
                 if (val > 2) {
                     inputEl.value = val - 1;
                 }
             } else {
-                // y 不能小於 x，也不能小於 2
-                const xVal = parseInt(otherEl.value) || 2;
-                if (val > xVal && val > 2) {
+                // y 的 ArrowDown：y 不能等於 x，也不能小於 2
+                if (val > 2 && val > otherVal) {
                     inputEl.value = val - 1;
                 }
             }
