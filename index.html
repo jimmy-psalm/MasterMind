@@ -853,7 +853,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================================
-//  動態限制 x 的最大值為 y
+//  動態限制 x 和 y 的範圍：x 不能大於 y，y 不能小於 x
 // ============================================================
 
 /**
@@ -868,8 +868,22 @@ function updateXMax() {
     }
 }
 
+/**
+ * 當 x 改變時，更新 y 的 min 屬性，確保 y 不會小於 x
+ */
+function updateYMin() {
+    const xVal = parseInt(inputX.value) || 1;
+    inputY.min = xVal;
+    // 如果當前的 y 值小於 x，自動調整
+    if (parseInt(inputY.value) < xVal) {
+        inputY.value = xVal;
+    }
+}
+
 inputY.addEventListener('input', updateXMax);
 inputY.addEventListener('change', updateXMax);
+inputX.addEventListener('input', updateYMin);
+inputX.addEventListener('change', updateYMin);
 
 // ============================================================
 //  Initialize on load
