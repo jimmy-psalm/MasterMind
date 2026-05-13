@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>猜顏色 Master Mind</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #2c2c3a;
+    font-family: 'Microsoft JhengHei', 'Segoe UI', Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    user-select: none;
+    overflow: auto;
+    padding: 10px;
+}
+.game-container {
+    background: #3a3a4e;
+    border-radius: 16px;
+    padding: 16px 20px 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    text-align: center;
+    max-width: 98vw;
+}
+h1 {
+    font-size: 22px;
+    color: #e8dcc8;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+}
+/* ---- Setup Panel ---- */
+.setup-panel {
+    background: #4a4a5e;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.setup-panel label {
+    color: #c8b898;
+    font-size: 14px;
+    font-weight: bold;
+}
+.setup-panel input {
+    width: 60px;
+    padding: 4px 8px;
+    border: 2px solid #6a6a7e;
+    border-radius: 6px;
+    background: #2c2c3a;
+    color: #e8dcc8;
+    font-size: 14px;
+    text-align: center;
+    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+}
+.setup-panel input:focus {
+    outline: none;
+    border-color: #8a8aae;
+}
+.setup-panel button {
+    padding: 6px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #5a8ab5;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+    transition: background 0.2s;
+}
+.setup-panel button:hover { background: #4a7aa5; }
+.setup-panel button:active { background: #3a6a95; }
+.setup-panel .error-msg {
+    color: #ff6b6b;
+    font-size: 12px;
+    display: none;
+}
+/* ---- Status Bar ---- */
+.status-bar {
+    font-size: 14px;
+    color: #c8b898;
+    margin-bottom: 8px;
+    min-height: 22px;
+    line-height: 22px;
+}
+/* ---- Table ---- */
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 80vh;
+}
+table {
+    border-collapse: collapse;
+    margin: 0 auto;
+    background: #3a3a4e;
+}
+th, td {
+    border: 1px solid #5a5a6e;
+    padding: 0;
+    text-align: center;
+    vertical-align: middle;
+}
+th {
+    background: #4a4a5e;
+    color: #c8b898;
+    font-size: 12px;
+    padding: 6px 4px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+td.trial-num {
+    color: #a89878;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 30px;
+    width: 30px;
+    background: #3a3a4e;
+}
+td.color-cell {
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    background: #2c2c3a;
+    border-radius: 0;
+    transition: background 0.15s;
+}
+td.color-cell:hover {
+    background: #4a4a5e;
+}
+td.color-cell.filled {
+    border: 2px solid #888;
+}
+td.hint-cell {
+    color: #e8dcc8;
+    font-size: 16px;
+    font-weight: bold;
+    min-width: 30px;
+    width: 30px;
+    background: #3a3a4e;
+}
+td.confirm-cell {
+    min-width: 50px;
+    width: 50px;
+    background: #3a3a4e;
+}
+td.confirm-cell button {
+    width: 100%;
+    height: 100%;
+    min-height: 36px;
+    border: none;
+    background: #5a8ab5;
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+    transition: background 0.2s;
+    padding: 4px 2px;
+}
+td.confirm-cell button:hover:not(:disabled) { background: #4a7aa5; }
+td.confirm-cell button:active:not(:disabled) { background: #3a6a95; }
+td.confirm-cell button:disabled {
+    background: #5a5a6e;
+    color: #888;
+    cursor: not-allowed;
+}
+td.confirm-cell button.confirmed {
+    background: #5a7a4a;
+    cursor: default;
+}
+/* ---- Color Picker Popup ---- */
+.color-picker-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+.color-picker-overlay.show {
+    display: flex;
+}
+.color-picker-popup {
+    background: #4a4a5e;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    text-align: center;
+    max-width: 90vw;
+}
+.color-picker-popup h3 {
+    color: #e8dcc8;
+    font-size: 15px;
+    margin-bottom: 10px;
+}
+.color-options {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.color-option {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+}
+.color-option:hover {
+    border-color: #fff;
+    transform: scale(1.1);
+}
+.color-option:active {
+    transform: scale(0.95);
+}
+.color-picker-popup .cancel-btn {
+    margin-top: 10px;
+    padding: 5px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #6a6a7e;
+    color: #c8b898;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+}
+.color-picker-popup .cancel-btn:hover { background: #7a7a8e; }
+/* ---- Color definitions ---- */
+.color-red { background: #e74c3c; }
+.color-blue { background: #3498db; }
+.color-green { background: #2ecc71; }
+.color-yellow { background: #f1c40f; }
+.color-purple { background: #9b59b6; }
+.color-orange { background: #e67e22; }
+.color-pink { background: #e84393; }
+.color-cyan { background: #00cec9; }
+.color-brown { background: #a0522d; }
+.color-white { background: #ecf0f1; border: 1px solid #888; }
+.color-gray { background: #95a5a6; }
+.color-black { background: #2d3436; border: 1px solid #555; }
+.color-lime { background: #a8e6cf; }
+.color-teal { background: #1abc9c; }
+.color-indigo { background: #6c5ce7; }
+.color-coral { background: #fd79a8; }
+/* ---- Color names for display ---- */
+.color-name {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 4px;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+    .game-container { padding: 10px; }
+    th { font-size: 10px; padding: 4px 2px; }
+    td.color-cell { min-width: 28px; width: 28px; height: 28px; }
+    td.trial-num { min-width: 24px; width: 24px; font-size: 11px; }
+    td.hint-cell { min-width: 24px; width: 24px; font-size: 13px; }
+    td.confirm-cell { min-width: 40px; width: 40px; }
+    td.confirm-cell button { font-size: 11px; min-height: 28px; }
+    .setup-panel { flex-direction: column; gap: 6px; }
+}
+</style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>猜顏色 Master Mind</h1>
+
+    <!-- Setup Panel -->
+    <div class="setup-panel" id="setupPanel">
+        <label>隱藏顏色數 (x): <input type="number" id="inputX" value="4" min="1" max="6"></label>
+        <label>顏色池總數 (y): <input type="number" id="inputY" value="6" min="1" max="16"></label>
+        <button id="startBtn">開始遊戲</button>
+        <button id="giveUpBtn" style="background:#c0392b;">放棄</button>
+        <span class="error-msg" id="errorMsg"></span>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar" id="statusBar">請設定 x 和 y，然後點擊「開始遊戲」</div>
+
+    <!-- Game Table -->
+    <div class="table-wrapper">
+        <table id="gameTable">
+            <!-- Header will be generated by JS -->
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Color Picker Popup -->
+<div class="color-picker-overlay" id="colorPickerOverlay">
+    <div class="color-picker-popup">
+        <h3 id="pickerTitle">選擇顏色</h3>
+        <div class="color-options" id="colorOptions"></div>
+        <button class="cancel-btn" id="pickerCancel">取消</button>
+    </div>
+</div>
+
+<script>
+// ============================================================
+//  Master Mind 猜顏色遊戲
+//  所有文字使用繁體中文 (Big5 編碼)
+// ============================================================
+
+// ---- 預定義顏色列表 (最多 16 種) ----
+const ALL_COLORS = [
+    { id: 'red',    name: '紅色',   cls: 'color-red',    hex: '#e74c3c' },
+    { id: 'blue',   name: '藍色',   cls: 'color-blue',   hex: '#3498db' },
+    { id: 'green',  name: '綠色',   cls: 'color-green',  hex: '#2ecc71' },
+    { id: 'yellow', name: '黃色',   cls: 'color-yellow', hex: '#f1c40f' },
+    { id: 'purple', name: '紫色',   cls: 'color-purple', hex: '#9b59b6' },
+    { id: 'orange', name: '橙色',   cls: 'color-orange', hex: '#e67e22' },
+    { id: 'pink',   name: '粉紅',   cls: 'color-pink',   hex: '#e84393' },
+    { id: 'cyan',   name: '青色',   cls: 'color-cyan',   hex: '#00cec9' },
+    { id: 'brown',  name: '棕色',   cls: 'color-brown',  hex: '#a0522d' },
+    { id: 'white',  name: '白色',   cls: 'color-white',  hex: '#ecf0f1' },
+    { id: 'gray',   name: '灰色',   cls: 'color-gray',   hex: '#95a5a6' },
+    { id: 'black',  name: '黑色',   cls: 'color-black',  hex: '#2d3436' },
+    { id: 'lime',   name: '青檸',   cls: 'color-lime',   hex: '#a8e6cf' },
+    { id: 'teal',   name: '深青',   cls: 'color-teal',   hex: '#1abc9c' },
+    { id: 'indigo', name: '靛色',   cls: 'color-indigo', hex: '#6c5ce7' },
+    { id: 'coral',  name: '珊瑚',   cls: 'color-coral',  hex: '#fd79a8' }
+];
+
+// ---- Game State ----
+let x = 4;          // 隱藏顏色數量
+let y = 6;          // 顏色池總數
+let maxTrials = 20; // 最大嘗試次數
+let secret = [];    // 隱藏答案
+let currentRow = 0; // 當前正在進行的行 (0-based)
+let gameStarted = false;
+let gameOver = false;
+let usedColors = []; // 當前遊戲使用的顏色子集
+
+// ---- DOM refs ----
+const tableHead = document.getElementById('tableHead');
+const tableBody = document.getElementById('tableBody');
+const statusBar = document.getElementById('statusBar');
+const inputX = document.getElementById('inputX');
+const inputY = document.getElementById('inputY');
+const startBtn = document.getElementById('startBtn');
+const giveUpBtn = document.getElementById('giveUpBtn');
+const errorMsg = document.getElementById('errorMsg');
+const colorPickerOverlay = document.getElementById('colorPickerOverlay');
+const colorOptions = document.getElementById('colorOptions');
+const pickerTitle = document.getElementById('pickerTitle');
+const pickerCancel = document.getElementById('pickerCancel');
+
+// ---- Picker state ----
+let pickerTargetRow = -1;
+let pickerTargetCol = -1;
+let pickerCallback = null;
+
+// ============================================================
+//  初始化
+// ============================================================
+
+/**
+ * 從 y 種顏色中隨機選取 x 個顏色（可重複）
+ */
+function generateSecret() {
+    secret = [];
+    for (let i = 0; i < x; i++) {
+        const idx = Math.floor(Math.random() * y);
+        secret.push(usedColors[idx].id);
+    }
+}
+
+/**
+ * 從 ALL_COLORS 中選取前 y 種作為使用的顏色
+ */
+function selectUsedColors() {
+    usedColors = ALL_COLORS.slice(0, y);
+}
+
+/**
+ * 建立表格
+ */
+function buildTable() {
+    const cols = 1 + x + 2 + 1; // trial + guess(x) + hint(2) + confirm
+
+    // Header - first row: labels
+    let theadHtml = '<tr>';
+    theadHtml += '<th>嘗試</th>';
+    for (let i = 0; i < x; i++) {
+        theadHtml += `<th>位置 ${i + 1}</th>`;
+    }
+    theadHtml += '<th>顏色位置<br>都對</th>';
+    theadHtml += '<th>顏色對<br>位置不對</th>';
+    theadHtml += '<th>確認</th>';
+    theadHtml += '</tr>';
+    // Header - second row: answer row (hidden by default, shown on give up)
+    theadHtml += '<tr id="answerRow" style="display:none;">';
+    theadHtml += '<th style="color:#e8dcc8;font-size:11px;">答案</th>';
+    for (let i = 0; i < x; i++) {
+        theadHtml += `<th id="answer_cell_${i}" style="padding:4px;"></th>`;
+    }
+    theadHtml += '<th></th><th></th><th></th>';
+    theadHtml += '</tr>';
+    tableHead.innerHTML = theadHtml;
+
+    // Body
+    let tbodyHtml = '';
+    for (let r = 0; r < maxTrials; r++) {
+        tbodyHtml += '<tr>';
+        // Trial number
+        tbodyHtml += `<td class="trial-num">${r + 1}</td>`;
+        // Guess cells (x columns)
+        for (let c = 0; c < x; c++) {
+            tbodyHtml += `<td class="color-cell" data-row="${r}" data-col="${c}" id="cell_${r}_${c}"></td>`;
+        }
+        // Hint: color and position correct
+        tbodyHtml += `<td class="hint-cell" id="hint_bulls_${r}">-</td>`;
+        // Hint: color correct but position wrong
+        tbodyHtml += `<td class="hint-cell" id="hint_cows_${r}">-</td>`;
+        // Confirm button
+        tbodyHtml += `<td class="confirm-cell" id="confirm_${r}">`;
+        tbodyHtml += `<button id="btn_${r}" disabled>確認</button>`;
+        tbodyHtml += '</td>';
+        tbodyHtml += '</tr>';
+    }
+    tableBody.innerHTML = tbodyHtml;
+
+    // Bind click events to color cells
+    for (let r = 0; r < maxTrials; r++) {
+        for (let c = 0; c < x; c++) {
+            const cell = document.getElementById(`cell_${r}_${c}`);
+            cell.addEventListener('click', () => onCellClick(r, c));
+        }
+        // Bind confirm button
+        const btn = document.getElementById(`btn_${r}`);
+        btn.addEventListener('click', () => onConfirm(r));
+    }
+}
+
+/**
+ * 重置遊戲狀態
+ */
+function resetGame() {
+    gameStarted = false;
+    gameOver = false;
+    currentRow = 0;
+    secret = [];
+    // Hide answer row in header
+    hideAnswerInHeader();
+
+    // Clear all cells
+    for (let r = 0; r < maxTrials; r++) {
+        for (let c = 0; c < x; c++) {
+            const cell = document.getElementById(`cell_${r}_${c}`);
+            cell.className = 'color-cell';
+            cell.title = '';
+            cell.style.background = '';
+            cell.style.opacity = '0.4';
+            delete cell.dataset.color;
+        }
+        document.getElementById(`hint_bulls_${r}`).textContent = '-';
+        document.getElementById(`hint_cows_${r}`).textContent = '-';
+        const btn = document.getElementById(`btn_${r}`);
+        btn.disabled = true;
+        btn.className = '';
+        btn.textContent = '確認';
+    }
+}
+
+/**
+ * 開始新遊戲（或重新開始）
+ */
+function startGame() {
+    // Read x and y
+    x = parseInt(inputX.value);
+    y = parseInt(inputY.value);
+
+    // Validation
+    if (isNaN(x) || x < 1) {
+        showError('x 必須大於 0');
+        return;
+    }
+    if (isNaN(y) || y < 1) {
+        showError('y 必須大於 0');
+        return;
+    }
+    if (y > 16) {
+        showError('y 不能超過 16');
+        return;
+    }
+    if (x > 20) {
+        showError('x 不能超過 20');
+        return;
+    }
+
+    hideError();
+
+    // Select used colors
+    selectUsedColors();
+
+    // Build table first, then reset
+    buildTable();
+    resetGame();
+
+    // Generate secret
+    generateSecret();
+
+    gameStarted = true;
+    gameOver = false;
+    currentRow = 0;
+
+    // Disable start button and x,y inputs during game
+    startBtn.disabled = true;
+    inputX.disabled = true;
+    inputY.disabled = true;
+
+    // Enable first row's cells
+    enableRow(0);
+
+    statusBar.textContent = `遊戲開始！請在第 1 行填入 ${x} 個顏色。`;
+    console.log('Secret:', secret.join(', ')); // For debugging
+}
+
+/**
+ * 啟用指定行的顏色格子（允許點擊）
+ */
+function enableRow(row) {
+    for (let c = 0; c < x; c++) {
+        const cell = document.getElementById(`cell_${row}_${c}`);
+        cell.style.cursor = 'pointer';
+        cell.style.opacity = '1';
+    }
+}
+
+/**
+ * 禁用指定行的顏色格子（只禁用點擊，不改變顏色亮度）
+ */
+function disableRow(row) {
+    for (let c = 0; c < x; c++) {
+        const cell = document.getElementById(`cell_${row}_${c}`);
+        cell.style.cursor = 'default';
+    }
+}
+
+/**
+ * 更新確認按鈕狀態（該行所有位置填滿才啟用）
+ */
+function updateConfirmButton(row) {
+    const btn = document.getElementById(`btn_${row}`);
+    if (btn.classList.contains('confirmed')) return;
+
+    let allFilled = true;
+    for (let c = 0; c < x; c++) {
+        const cell = document.getElementById(`cell_${row}_${c}`);
+        if (!cell.classList.contains('filled')) {
+            allFilled = false;
+            break;
+        }
+    }
+    btn.disabled = !allFilled;
+}
+
+/**
+ * 點擊顏色格子（已填色可更換，未填色可選色）
+ */
+function onCellClick(row, col) {
+    if (!gameStarted || gameOver) return;
+    if (row !== currentRow) return;
+
+    // Check if this row's confirm button is already confirmed
+    const btn = document.getElementById(`btn_${row}`);
+    if (btn.classList.contains('confirmed')) return;
+
+    // Open color picker (allow changing already filled cells)
+    openPicker(row, col);
+}
+
+/**
+ * 打開顏色選擇器
+ */
+function openPicker(row, col) {
+    pickerTargetRow = row;
+    pickerTargetCol = col;
+
+    // Build color options
+    colorOptions.innerHTML = '';
+    for (let i = 0; i < y; i++) {
+        const color = usedColors[i];
+        const div = document.createElement('div');
+        div.className = `color-option ${color.cls}`;
+        div.title = color.name;
+        div.addEventListener('click', () => {
+            selectColor(color.id);
+        });
+        colorOptions.appendChild(div);
+    }
+
+    pickerTitle.textContent = `選擇顏色 - 第 ${row + 1} 行 位置 ${col + 1}`;
+    colorPickerOverlay.classList.add('show');
+}
+
+/**
+ * 選擇顏色
+ */
+function selectColor(colorId) {
+    const row = pickerTargetRow;
+    const col = pickerTargetCol;
+
+    // Find color name and hex value
+    let colorName = '';
+    let colorHex = '';
+    for (const c of usedColors) {
+        if (c.id === colorId) {
+            colorName = c.name;
+            colorHex = c.hex;
+            break;
+        }
+    }
+
+    // Update cell - use inline style for background to override CSS
+    const cell = document.getElementById(`cell_${row}_${col}`);
+    cell.className = 'color-cell filled';
+    cell.style.background = colorHex;
+    cell.title = colorName;
+    cell.dataset.color = colorId;
+
+    // Close picker
+    closePicker();
+
+    // Update confirm button
+    updateConfirmButton(row);
+}
+
+/**
+ * 根據顏色 id 取得 CSS class
+ */
+function getColorClass(colorId) {
+    for (const c of ALL_COLORS) {
+        if (c.id === colorId) return c.cls;
+    }
+    return '';
+}
+
+/**
+ * 關閉顏色選擇器
+ */
+function closePicker() {
+    colorPickerOverlay.classList.remove('show');
+    pickerTargetRow = -1;
+    pickerTargetCol = -1;
+}
+
+pickerCancel.addEventListener('click', closePicker);
+colorPickerOverlay.addEventListener('click', (e) => {
+    if (e.target === colorPickerOverlay) {
+        closePicker();
+    }
+});
+
+/**
+ * 按下確認按鈕
+ */
+function onConfirm(row) {
+    if (!gameStarted || gameOver) return;
+    if (row !== currentRow) return;
+
+    const btn = document.getElementById(`btn_${row}`);
+    if (btn.disabled || btn.classList.contains('confirmed')) return;
+
+    // Read guess
+    const guess = [];
+    for (let c = 0; c < x; c++) {
+        const cell = document.getElementById(`cell_${row}_${c}`);
+        guess.push(cell.dataset.color);
+    }
+
+    // Calculate hints
+    const result = calculateHints(guess);
+
+    // Display hints
+    document.getElementById(`hint_bulls_${row}`).textContent = result.bulls;
+    document.getElementById(`hint_cows_${row}`).textContent = result.cows;
+
+    // Mark as confirmed
+    btn.classList.add('confirmed');
+    btn.textContent = '已確認';
+    disableRow(row);
+
+    // Check win
+    if (result.bulls === x) {
+        gameOver = true;
+        startBtn.disabled = false;
+        inputX.disabled = false;
+        inputY.disabled = false;
+        statusBar.textContent = `🎉 恭喜！你在第 ${row + 1} 次猜中了所有顏色！`;
+        alert(`🎉 恭喜過關！\n\n你在第 ${row + 1} 次嘗試中猜中了所有 ${x} 個顏色！`);
+        return;
+    }
+
+    // Check if max trials reached
+    if (row + 1 >= maxTrials) {
+        gameOver = true;
+        startBtn.disabled = false;
+        inputX.disabled = false;
+        inputY.disabled = false;
+        statusBar.textContent = `😢 遊戲結束！已用完所有 ${maxTrials} 次嘗試。`;
+        alert(`😢 遊戲結束！\n\n已用完所有 ${maxTrials} 次嘗試。`);
+        return;
+    }
+
+    // Move to next row
+    currentRow = row + 1;
+    enableRow(currentRow);
+    statusBar.textContent = `第 ${currentRow + 1} 行：請填入 ${x} 個顏色。`;
+}
+
+/**
+ * 計算 Bulls 和 Cows
+ * Bulls: 顏色和位置都正確
+ * Cows: 顏色正確但位置不對
+ */
+function calculateHints(guess) {
+    let bulls = 0;
+    let cows = 0;
+
+    // Count bulls first
+    const secretRemaining = [];
+    const guessRemaining = [];
+
+    for (let i = 0; i < x; i++) {
+        if (guess[i] === secret[i]) {
+            bulls++;
+        } else {
+            secretRemaining.push(secret[i]);
+            guessRemaining.push(guess[i]);
+        }
+    }
+
+    // Count cows from remaining
+    for (const g of guessRemaining) {
+        const idx = secretRemaining.indexOf(g);
+        if (idx !== -1) {
+            cows++;
+            secretRemaining.splice(idx, 1);
+        }
+    }
+
+    return { bulls, cows };
+}
+
+/**
+ * 在 header 答案行顯示正確答案（只顯示顏色，不顯示名稱）
+ */
+function showAnswerInHeader() {
+    const answerRow = document.getElementById('answerRow');
+    answerRow.style.display = 'table-row';
+    for (let c = 0; c < x; c++) {
+        const cell = document.getElementById(`answer_cell_${c}`);
+        const colorId = secret[c];
+        let colorHex = '';
+        for (const col of usedColors) {
+            if (col.id === colorId) {
+                colorHex = col.hex;
+                break;
+            }
+        }
+        cell.style.background = colorHex;
+        cell.style.border = '2px solid #888';
+    }
+}
+
+/**
+ * 隱藏 header 答案行
+ */
+function hideAnswerInHeader() {
+    const answerRow = document.getElementById('answerRow');
+    if (answerRow) {
+        answerRow.style.display = 'none';
+        for (let c = 0; c < x; c++) {
+            const cell = document.getElementById(`answer_cell_${c}`);
+            if (cell) {
+                cell.style.background = '';
+                cell.style.border = '';
+            }
+        }
+    }
+}
+
+/**
+ * 放棄遊戲
+ */
+function giveUp() {
+    if (!gameStarted || gameOver) return;
+
+    gameOver = true;
+    gameStarted = false;
+
+    // Show answer in header row (just colors, no names)
+    showAnswerInHeader();
+
+    // Disable current row
+    disableRow(currentRow);
+
+    statusBar.textContent = '你選擇了放棄！答案已顯示在頂行。';
+
+    // Re-enable start button and x,y inputs
+    startBtn.disabled = false;
+    inputX.disabled = false;
+    inputY.disabled = false;
+}
+
+/**
+ * 顯示錯誤訊息
+ */
+function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.style.display = 'inline';
+}
+
+/**
+ * 隱藏錯誤訊息
+ */
+function hideError() {
+    errorMsg.style.display = 'none';
+}
+
+// ============================================================
+//  Event Bindings
+// ============================================================
+
+startBtn.addEventListener('click', startGame);
+giveUpBtn.addEventListener('click', giveUp);
+
+// Enter key to start
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const active = document.activeElement;
+        if (active === inputX || active === inputY) {
+            startGame();
+        }
+    }
+});
+
+// ============================================================
+//  動態限制 x 的最大值為 y
+// ============================================================
+
+/**
+ * 當 y 改變時，更新 x 的 max 屬性，確保 x 不會大於 y
+ */
+function updateXMax() {
+    const yVal = parseInt(inputY.value) || 1;
+    inputX.max = yVal;
+    // 如果當前的 x 值大於 y，自動調整
+    if (parseInt(inputX.value) > yVal) {
+        inputX.value = yVal;
+    }
+}
+
+inputY.addEventListener('input', updateXMax);
+inputY.addEventListener('change', updateXMax);
+
+// ============================================================
+//  Initialize on load
+// ============================================================
+
+// 不呼叫 buildTable()，表格在按下「開始遊戲」後才建立
+statusBar.textContent = '請設定 x 和 y，然後點擊「開始遊戲」';
+</script>
+
+</body>
+</html>
