@@ -860,6 +860,7 @@ document.addEventListener('keydown', (e) => {
 
 /**
  * 檢查輸入後的數值是否有效，若無效則阻止按鍵
+ * 只允許輸入一位數字（2~9），且 x ≤ y，y ≥ x
  */
 function validateInput(inputEl, otherEl, isX) {
     return function(e) {
@@ -867,31 +868,35 @@ function validateInput(inputEl, otherEl, isX) {
         const controlKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
         if (controlKeys.includes(e.key)) return;
 
-        // 只允許數字鍵
+        // 只允許數字鍵 0-9
         if (!/^[0-9]$/.test(e.key)) {
             e.preventDefault();
             return;
         }
 
-        // 模擬輸入後的值
-        const currentVal = inputEl.value;
-        const newVal = parseInt(currentVal + e.key);
-        
-        if (isNaN(newVal)) {
+        // 如果已經有值，不允許再輸入第二位數字
+        if (inputEl.value.length > 0) {
+            e.preventDefault();
+            return;
+        }
+
+        // 檢查輸入的數字是否在 2~9 範圍
+        const digit = parseInt(e.key);
+        if (digit < 2 || digit > 9) {
             e.preventDefault();
             return;
         }
 
         if (isX) {
-            // x 必須在 2~9 之間，且 x ≤ y
-            const yVal = parseInt(otherEl.value) || 2;
-            if (newVal < 2 || newVal > 9 || newVal > yVal) {
+            // x 不能大於 y
+            const yVal = parseInt(otherEl.value) || 9;
+            if (digit > yVal) {
                 e.preventDefault();
             }
         } else {
-            // y 必須在 2~9 之間，且 y ≥ x
+            // y 不能小於 x
             const xVal = parseInt(otherEl.value) || 2;
-            if (newVal < 2 || newVal > 9 || newVal < xVal) {
+            if (digit < xVal) {
                 e.preventDefault();
             }
         }
