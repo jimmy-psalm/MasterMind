@@ -282,8 +282,8 @@ td.confirm-cell button.confirmed {
 
     <!-- Setup Panel -->
     <div class="setup-panel" id="setupPanel">
-        <label>隱藏顏色數 (x): <input type="number" id="inputX" value="4" min="1" max="6"></label>
-        <label>顏色池總數 (y): <input type="number" id="inputY" value="6" min="1" max="16"></label>
+        <label>隱藏顏色數 (x): <input type="number" id="inputX" value="4" min="2" max="9"></label>
+        <label>顏色池總數 (y): <input type="number" id="inputY" value="6" min="2" max="9"></label>
         <button id="startBtn">開始遊戲</button>
         <button id="giveUpBtn" style="background:#c0392b;">放棄</button>
         <span class="error-msg" id="errorMsg"></span>
@@ -853,37 +853,85 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================================
-//  動態限制 x 和 y 的範圍：x 不能大於 y，y 不能小於 x
+//  即時攔截無效輸入（類似 getchar() 行為）
+//  x 範圍：2~9，且 x ≤ y
+//  y 範圍：2~9，且 y ≥ x
 // ============================================================
 
 /**
- * 當 y 改變時，更新 x 的 max 屬性，確保 x 不會大於 y
+ * 檢查輸入後的數值是否有效，若無效則阻止按鍵
  */
-function updateXMax() {
-    const yVal = parseInt(inputY.value) || 1;
-    inputX.max = yVal;
-    // 如果當前的 x 值大於 y，自動調整
-    if (parseInt(inputX.value) > yVal) {
-        inputX.value = yVal;
-    }
+function validateInput(inputEl, otherEl, isX) {
+    return function(e) {
+        // 允許控制鍵：Backspace, Delete, Tab, 方向鍵, Home, End
+        const controlKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+        if (controlKeys.includes(e.key)) return;
+
+        // 只允許數字鍵
+        if (!/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+            return;
+        }
+
+        // 模擬輸入後的值
+        const currentVal = inputEl.value;
+        const newVal = parseInt(currentVal + e.key);
+        
+        if (isNaN(newVal)) {
+            e.preventDefault();
+            return;
+        }
+
+        if (isX) {
+            // x 必須在 2~9 之間，且 x ≤ y
+            const yVal = parseInt(otherEl.value) || 2;
+            if (newVal < 2 || newVal > 9 || newVal > yVal) {
+                e.preventDefault();
+            }
+        } else {
+            // y 必須在 2~9 之間，且 y ≥ x
+            const xVal = parseInt(otherEl.value) || 2;
+            if (newVal < 2 || newVal > 9 || newVal < xVal) {
+                e.preventDefault();
+            }
+        }
+    };
 }
 
 /**
- * 當 x 改變時，更新 y 的 min 屬性，確保 y 不會小於 x
+ * 當輸入框失去焦點時，修正為有效值
  */
-function updateYMin() {
-    const xVal = parseInt(inputX.value) || 1;
-    inputY.min = xVal;
-    // 如果當前的 y 值小於 x，自動調整
-    if (parseInt(inputY.value) < xVal) {
-        inputY.value = xVal;
-    }
+function clampOnBlur(inputEl, otherEl, isX) {
+    return function() {
+        let val = parseInt(inputEl.value);
+        if (isNaN(val)) {
+            inputEl.value = isX ? 2 : 2;
+            return;
+        }
+        
+        if (isX) {
+            const yVal = parseInt(otherEl.value) || 2;
+            if (val < 2) val = 2;
+            if (val > 9) val = 9;
+            if (val > yVal) val = yVal;
+            inputEl.value = val;
+        } else {
+            const xVal = parseInt(otherEl.value) || 2;
+            if (val < 2) val = 2;
+            if (val > 9) val = 9;
+            if (val < xVal) val = xVal;
+            inputEl.value = val;
+        }
+    };
 }
 
-inputY.addEventListener('input', updateXMax);
-inputY.addEventListener('change', updateXMax);
-inputX.addEventListener('input', updateYMin);
-inputX.addEventListener('change', updateYMin);
+// 綁定 keydown 事件（即時攔截）
+inputX.addEventListener('keydown', validateInput(inputX, inputY, true));
+inputY.addEventListener('keydown', validateInput(inputY, inputX, false));
+
+// 綁定 blur 事件（失去焦點時修正）
+inputX.addEventListener('blur', clampOnBlur(inputX, inputY, true));
+inputY.addEventListener('blur', clampOnBlur(inputY, inputX, false));
 
 // ============================================================
 //  Initialize on load
